@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Excel Analysis Dashboard</title>
+
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Plotly.js -->
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+
+    <!-- Font Awesome for Icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+
+    <!-- Custom Styles -->
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Arial', sans-serif;
+        }
+
+        .navbar {
+            background-color: #a8e6cf;
+            /* Pastel Mint */
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 1000;
+        }
+
+        .navbar-brand {
+            color: #333;
+            /* Dark Gray */
+            font-weight: bold;
+            font-size: 1.5rem;
+        }
+
+        .navbar-brand i {
+            margin-right: 10px;
+        }
+
+        .content {
+            padding: 20px;
+        }
+
+        .full-width-container {
+            width: 100%;
+            padding: 20px;
+            background-color: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .nav-tabs .nav-link {
+            font-weight: bold;
+            color: #a8e6cf;
+            /* Pastel Mint */
+            border: none;
+            border-radius: 5px 5px 0 0;
+            margin-right: 5px;
+        }
+
+        .nav-tabs .nav-link.active {
+            background-color: #a8e6cf;
+            /* Pastel Mint */
+            color: white;
+        }
+
+        .chart-container {
+            position: relative;
+            margin-top: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .chart-type-selector {
+            position: absolute;
+            top: 40px;
+            right: 10px;
+            z-index: 1000;
+            width: 150px;
+            background-color: rgba(255, 255, 255, 0.9);
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 5px;
+        }
+
+        .btn-custom {
+            background-color: #a8e6cf;
+            /* Pastel Mint */
+            color: #333;
+            /* Dark Gray */
+            border: none;
+            border-radius: 5px;
+            padding: 10px 20px;
+            font-weight: bold;
+            transition: background-color 0.3s ease;
+        }
+
+        .btn-custom:hover {
+            background-color: #8fd3c7;
+            /* Slightly Darker Mint */
+        }
+
+        .table-responsive {
+            margin-top: 20px;
+        }
+
+        .table-striped tbody tr:nth-of-type(odd) {
+            background-color: rgba(168, 230, 207, 0.1);
+            /* Light Pastel Mint */
+        }
+
+        .table-striped tbody tr:hover {
+            background-color: rgba(168, 230, 207, 0.2);
+            /* Slightly Darker Pastel Mint */
+        }
+
+        h3 {
+            color: #a8e6cf;
+            /* Pastel Mint */
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+
+        .tab-content {
+            padding: 20px;
+            background-color: white;
+            border-radius: 0 10px 10px 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .chart-info {
+            background-color: #f8f9fa;
+            border-radius: 5px;
+            border: 1px solid #a8e6cf;
+            padding: 10px;
+            margin-top: 10px;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .plotly-graph-div {
+            transition: all 0.3s ease;
+        }
+
+        /* Add these additional styles to your existing CSS */
+        .chart-details {
+            background-color: #f8f9fa;
+            border: 1px solid #a8e6cf !important;
+            border-radius: 5px;
+            margin-top: 15px;
+            padding: 15px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            animation: fadeIn 0.3s ease;
+        }
+
+        .extracted-view {
+            background-color: white;
+            border: 1px solid #ddd !important;
+            border-radius: 5px;
+            margin-top: 15px;
+            padding: 15px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            animation: slideIn 0.4s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Make sure plotly elements are visible */
+        .plotly-graph-div path,
+        .plotly-graph-div rect,
+        .plotly-graph-div circle {
+            transition: opacity 0.3s ease !important;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Fixed Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark fixed-top">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-chart-line"></i> Excel Data Analysis
+            </a>
+            <form method="POST" enctype="multipart/form-data" class="d-flex">
+                {% csrf_token %}
+                <input type="file" name="file" class="form-control me-2" accept=".xlsx, .xls" required>
+                <button type="submit" class="btn btn-light">
+                    <i class="fas fa-upload"></i> Upload & Analyze
+                </button>
+            </form>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-5 pt-4">
+        {% if summary_table %}
+        <div class="full-width-container">
+            <h3><i class="fas fa-table"></i> Summary Table</h3>
+            <div class="table-responsive">
+                {{ summary_table | safe }}
+            </div>
+            <a href="{{ file_url }}" class="btn btn-custom mt-3">
+                <i class="fas fa-download"></i> Download Processed Data
+            </a>
+        </div>
+
+        <div class="full-width-container mt-5">
+            <h3><i class="fas fa-chart-bar"></i> Visualizations</h3>
+
+            <!-- Tabs for Selecting Charts -->
+            <ul class="nav nav-tabs mt-3" id="chartTabs">
+                <li class="nav-item">
+                    <a class="nav-link active" data-bs-toggle="tab" href="#chart1">
+                        <i class="fas fa-weight"></i> Spend by Weight
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-bs-toggle="tab" href="#chart2">
+                        <i class="fas fa-box"></i> Spend by Service & Weight
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-bs-toggle="tab" href="#chart3">
+                        <i class="fas fa-tools"></i> Accessorials by Service
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-bs-toggle="tab" href="#chart4">
+                        <i class="fas fa-percent"></i> Avg Discount by Weight
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-bs-toggle="tab" href="#chart5">
+                        <i class="fas fa-chart-pie"></i> Accessorial Distribution
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-bs-toggle="tab" href="#chart6">
+                        <i class="fas fa-map"></i> Spend by Service & Zone
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-bs-toggle="tab" href="#chart7">
+                        <i class="fas fa-percent"></i> Avg Discount by Zone
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-bs-toggle="tab" href="#chart8">
+                        <i class="fas fa-tools"></i> Accessorials by Zone
+                    </a>
+                </li>
+            </ul>
+
+            <!-- Chart Containers -->
+            <div class="tab-content mt-3">
+                <div class="tab-pane fade show active" id="chart1">
+                    <div class="chart-container">
+                        {{ chart1 | safe }}
+                        <select class="form-select chart-type-selector" data-chart-id="chart1">
+                            <option value="bar">Bar Chart</option>
+                            <option value="pie">Pie Chart</option>
+                            <option value="line">Line Chart</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="tab-pane fade" id="chart2">
+                    <div class="chart-container">
+                        {{ chart2 | safe }}
+                        <select class="form-select chart-type-selector" data-chart-id="chart2">
+                            <option value="bar">Bar Chart</option>
+                            <option value="pie">Pie Chart</option>
+                            <option value="line">Line Chart</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="tab-pane fade" id="chart3">
+                    <div class="chart-container">
+                        {{ chart3 | safe }}
+                        <select class="form-select chart-type-selector" data-chart-id="chart3">
+                            <option value="bar">Bar Chart</option>
+                            <option value="pie">Pie Chart</option>
+                            <option value="line">Line Chart</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="tab-pane fade" id="chart4">
+                    <div class="chart-container">
+                        {{ chart4 | safe }}
+                        <select class="form-select chart-type-selector" data-chart-id="chart4">
+                            <option value="bar">Bar Chart</option>
+                            <option value="pie">Pie Chart</option>
+                            <option value="line">Line Chart</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="tab-pane fade" id="chart5">
+                    <div class="chart-container">
+                        {{ chart5 | safe }}
+                        <select class="form-select chart-type-selector" data-chart-id="chart5">
+                            <option value="bar">Bar Chart</option>
+                            <option value="pie">Pie Chart</option>
+                            <option value="line">Line Chart</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="tab-pane fade" id="chart6">
+                    <div class="chart-container">
+                        {{ chart6 | safe }}
+                        <select class="form-select chart-type-selector" data-chart-id="chart6">
+                            <option value="bar">Bar Chart</option>
+                            <option value="pie">Pie Chart</option>
+                            <option value="line">Line Chart</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="tab-pane fade" id="chart7">
+                    <div class="chart-container">
+                        {{ chart7 | safe }}
+                        <select class="form-select chart-type-selector" data-chart-id="chart7">
+                            <option value="bar">Bar Chart</option>
+                            <option value="pie">Pie Chart</option>
+                            <option value="line">Line Chart</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="tab-pane fade" id="chart8">
+                    {% for chart in chart8 %}
+                    <div class="chart-container">
+                        {{ chart | safe }}
+                        <select class="form-select chart-type-selector" data-chart-id="chart8">
+                            <option value="bar">Bar Chart</option>
+                            <option value="pie">Pie Chart</option>
+                            <option value="line">Line Chart</option>
+                        </select>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Bootstrap 5 JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            // Chart type selection functionality
+            const chartTypeSelectors = document.querySelectorAll('.chart-type-selector');
+            chartTypeSelectors.forEach(selector => {
+                selector.addEventListener('change', function () {
+                    const chartId = this.getAttribute('data-chart-id');
+                    const chartType = this.value;
+                    const chartDiv = document.getElementById(chartId).querySelector('.plotly-graph-div');
+
+                    Plotly.restyle(chartDiv, {
+                        type: chartType
+                    });
+                });
+            });
+
+            // Find all Plotly charts and enhance them
+            const charts = document.querySelectorAll('.plotly-graph-div');
+
+            charts.forEach(function (chartDiv) {
+                // Store the currently highlighted trace
+                let highlightedTrace = null;
+
+                // Add a custom hover event
+                chartDiv.on('plotly_hover', function (eventData) {
+                    if (!eventData || !eventData.points || eventData.points.length === 0) return;
+
+                    const point = eventData.points[0];
+                    const traceIndex = point.curveNumber;
+
+                    // Only apply if this is a different trace than currently highlighted
+                    if (highlightedTrace !== traceIndex) {
+                        // Create update object for all traces (make them transparent)
+                        const update = {
+                            opacity: 0.3
+                        };
+
+                        // Apply to all traces
+                        Plotly.restyle(chartDiv, update);
+
+                        // Now make the hovered trace fully opaque
+                        const highlightUpdate = {
+                            opacity: 1.0
+                        };
+
+                        Plotly.restyle(chartDiv, highlightUpdate, [traceIndex]);
+
+                        // Update the highlighted trace
+                        highlightedTrace = traceIndex;
+                    }
+                });
+
+                // When clicking, create detailed information
+                chartDiv.on('plotly_click', function (eventData) {
+                    if (!eventData || !eventData.points || eventData.points.length === 0) return;
+
+                    const point = eventData.points[0];
+                    const traceIndex = point.curveNumber;
+                    const pointIndex = point.pointNumber;
+
+                    // Get container for this chart
+                    const chartContainer = chartDiv.closest('.chart-container');
+
+                    // Check if details already exist
+                    let detailsBox = chartContainer.querySelector('.chart-details');
+                    if (!detailsBox) {
+                        // Create details box
+                        detailsBox = document.createElement('div');
+                        detailsBox.className = 'chart-details mt-3 p-3 border rounded';
+                        detailsBox.style.backgroundColor = '#f8f9fa';
+                        detailsBox.style.borderColor = '#a8e6cf';
+                        chartContainer.appendChild(detailsBox);
+                    }
+
+                    // Get point data
+                    const label = point.label || point.x || 'N/A';
+                    const value = point.value || point.y || 'N/A';
+
+                    // Display details
+                    detailsBox.innerHTML = `
+                <h5 class="mb-2">Selected: ${label}</h5>
+                <p><strong>Value:</strong> ${value}</p>
+                <p><strong>Trace:</strong> ${traceIndex}, <strong>Point:</strong> ${pointIndex}</p>
+                <button class="btn btn-sm btn-custom extract-btn">Extract Data</button>
+            `;
+
+                    // Add click handler for extract button
+                    const extractBtn = detailsBox.querySelector('.extract-btn');
+                    extractBtn.addEventListener('click', function () {
+                        // Create extracted view div
+                        let extractedView = chartContainer.querySelector('.extracted-view');
+                        if (!extractedView) {
+                            extractedView = document.createElement('div');
+                            extractedView.className = 'extracted-view mt-3 p-2 border rounded';
+                            extractedView.innerHTML = `
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h5 class="m-0">Extracted Data: ${label}</h5>
+                            <button class="btn btn-sm btn-outline-secondary close-btn">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <div id="extracted-plot-${traceIndex}-${pointIndex}" style="height:250px;"></div>
+                    `;
+                            chartContainer.appendChild(extractedView);
+
+                            // Add close button functionality
+                            extractedView.querySelector('.close-btn').addEventListener('click', function () {
+                                extractedView.remove();
+                            });
+
+                            // Create a new simpler plot with just this data point
+                            const plotElement = document.getElementById(`extracted-plot-${traceIndex}-${pointIndex}`);
+
+                            // Get data for this trace
+                            const traceData = chartDiv.data[traceIndex];
+
+                            // Create a simplified version for the extracted view
+                            const extractedData = {
+                                x: [label],
+                                y: [value],
+                                type: traceData.type || 'bar',
+                                marker: {
+                                    color: '#a8e6cf'
+                                },
+                                name: label
+                            };
+
+                            Plotly.newPlot(plotElement, [extractedData], {
+                                margin: { t: 10, r: 10, l: 40, b: 40 }
+                            });
+                        }
+                    });
+                });
+
+                // Add a custom unhover event to reset when not hovering any trace
+                chartDiv.on('plotly_unhover', function () {
+                    // Reset all traces to full opacity
+                    Plotly.restyle(chartDiv, {
+                        opacity: 1.0
+                    });
+
+                    // Reset highlighted trace
+                    highlightedTrace = null;
+                });
+            });
+        });
+    </script>
+
+</body>
+
+</html>
