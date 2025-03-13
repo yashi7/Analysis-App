@@ -4,6 +4,51 @@ import plotly.express as px
 from django.shortcuts import render
 from django.http import JsonResponse
 from django.conf import settings
+from django.utils.safestring import mark_safe
+
+def generate_merged_table_html(df):
+    html = '<table class="table table-striped">'
+    
+    # Add Table Header
+    html += "<thead><tr>"
+    for col in df.columns:
+        html += f"<th>{col}</th>"
+    html += "</tr></thead><tbody>"
+    
+    prev_service = None
+    prev_weight_class = None
+    service_rowspan = {}
+    weight_rowspan = {}
+
+    # Calculate row spans
+    df_grouped = df.groupby(["Service Type Offered", "Weight Class"]).size().reset_index(name='count')
+
+    for _, row in df_grouped.iterrows():
+        service_rowspan[row["Service Type Offered"]] = service_rowspan.get(row["Service Type Offered"], 0) + row["count"]
+        weight_rowspan[(row["Service Type Offered"], row["Weight Class"])] = row["count"]
+
+    # Construct Table Rows with Rowspan
+    for _, row in df.iterrows():
+        html += "<tr>"
+        
+        # Merge "Service Type Offered"
+        if row["Service Type Offered"] != prev_service:
+            html += f'<td rowspan="{service_rowspan[row["Service Type Offered"]]}">{row["Service Type Offered"]}</td>'
+            prev_service = row["Service Type Offered"]
+
+        # Merge "Weight Class"
+        if row["Weight Class"] != prev_weight_class or prev_service != row["Service Type Offered"]:
+            html += f'<td rowspan="{weight_rowspan[(row["Service Type Offered"], row["Weight Class"])]}">{row["Weight Class"]}</td>'
+            prev_weight_class = row["Weight Class"]
+
+        # Add other columns
+        for col in df.columns[2:]:  # Skip first two columns as they are already added
+            html += f"<td>{row[col]}</td>"
+
+        html += "</tr>"
+
+    html += "</tbody></table>"
+    return mark_safe(html)
 
 def analyze_excel(request):
     if request.method == "POST" and request.FILES.get("file"):
@@ -148,8 +193,10 @@ def analyze_excel(request):
             chart8.append(fig.to_html(full_html=False))
 
         # Analysis Logic
+        # Analysis Logic
         clients_min_amount = df.groupby("Service Type Offered")["Base Rate Charged"].min().to_dict()
 
+        # Create the summary DataFrame with additional percentage columns
         summary = df.groupby(["Service Type Offered", "Weight Class", "Zone"]).agg(
             Count=("Service Type Offered", "size"),
             Total_Spend=("Client's Cost", "sum"),
@@ -158,14 +205,32 @@ def analyze_excel(request):
             Disc=("Peak Calc", lambda x: round(x.max() * 100, 2)),
         ).reset_index()
 
+        # Add percentage calculations
+        summary["Base Rate %"] = (summary["Base_Rate"] / summary["Total_Spend"] * 100).fillna(0).round(2)
+        summary["Accessorial %"] = (summary["Total_Accessorial"] / summary["Total_Spend"] * 100).fillna(0).round(2)
+        summary["Max Disc"] = summary["Disc"] 
+        summary["Max Disc"] = summary["Max Disc"].round(2) 
+
+        # Calculate Total Spend Percentage
+        grand_total_spend = summary["Total_Spend"].sum()
+        summary["Spend %"] = (summary["Total_Spend"] / grand_total_spend * 100).fillna(0).round(2)
+
+        # Add Client's Min Amount
         summary["Client's Min"] = summary["Service Type Offered"].map(clients_min_amount)
+
+        # Reorder columns for better readability
+        summary = summary[[
+            "Service Type Offered", "Weight Class", "Zone", "Count", "Total_Spend", "Spend %",
+            "Base_Rate", "Base Rate %", "Total_Accessorial", "Accessorial %", "Max Disc", "Client's Min"
+        ]]
 
         # Save processed file
         output_file = os.path.join(settings.MEDIA_ROOT, "summary_output.xlsx")
         summary.to_excel(output_file, index=False, sheet_name="Summary")
+        merged_table_html = generate_merged_table_html(summary)
 
         return render(request, "upload.html", {
-            "summary_table": summary.to_html(classes="table table-striped", index=False),
+            "summary_table": merged_table_html,
             "file_url": f"/media/summary_output.xlsx",
             "chart1": chart1.to_html(full_html=False),
             "chart2": chart2.to_html(full_html=False),

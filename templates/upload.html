@@ -204,6 +204,34 @@
             }
         }
 
+        /* Add borders to the table, headers, and cells */
+        .table {
+            border-collapse: collapse;
+            /* Ensures borders are merged */
+            width: 100%;
+            border: 1px solid #0a0a0a;
+            /* Border for the entire table */
+        }
+
+        .table th,
+        .table td {
+            border: 1px solid #0d0d0d;
+            /* Border for each cell */
+            padding: 8px;
+            /* Add some padding for better spacing */
+            text-align: center;
+            /* Center-align text */
+        }
+
+        .table th {
+            background-color: #a8e6cf;
+            /* Pastel Mint for header background */
+            color: #333;
+            /* Dark Gray for header text */
+            font-weight: bold;
+            /* Bold header text */
+        }
+
         /* Make sure plotly elements are visible */
         .plotly-graph-div path,
         .plotly-graph-div rect,
@@ -293,7 +321,7 @@
             <!-- Chart Containers -->
             <div class="tab-content mt-3">
                 <div class="tab-pane fade show active" id="chart1">
-                    <div class="chart-container" >
+                    <div class="chart-container">
                         {{ chart1 | safe }}
                         <select class="form-select chart-type-selector" data-chart-id="chart1">
                             <option value="bar">Bar Chart</option>
