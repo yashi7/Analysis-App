@@ -235,7 +235,7 @@
         {% if summary_table %}
         <div class="full-width-container">
             <h3><i class="fas fa-table"></i> Summary Table</h3>
-            <div class="table-responsive">
+            <div class="table-responsive" style="text-align: center;">
                 {{ summary_table | safe }}
             </div>
             <a href="{{ file_url }}" class="btn btn-custom mt-3">
@@ -243,7 +243,7 @@
             </a>
         </div>
 
-        <div class="full-width-container mt-5">
+        <div class="full-width-container mt-5" ,>
             <h3><i class="fas fa-chart-bar"></i> Visualizations</h3>
 
             <!-- Tabs for Selecting Charts -->
@@ -293,7 +293,7 @@
             <!-- Chart Containers -->
             <div class="tab-content mt-3">
                 <div class="tab-pane fade show active" id="chart1">
-                    <div class="chart-container">
+                    <div class="chart-container" >
                         {{ chart1 | safe }}
                         <select class="form-select chart-type-selector" data-chart-id="chart1">
                             <option value="bar">Bar Chart</option>
@@ -365,8 +365,8 @@
                 <div class="tab-pane fade" id="chart8">
                     {% for chart in chart8 %}
                     <div class="chart-container">
-                        {{ chart | safe }}
-                        <select class="form-select chart-type-selector" data-chart-id="chart8">
+                        <div id="chart8-{{ forloop.counter }}">{{ chart | safe }}</div>
+                        <select class="form-select chart-type-selector" data-chart-id="chart8-{{ forloop.counter }}">
                             <option value="bar">Bar Chart</option>
                             <option value="pie">Pie Chart</option>
                             <option value="line">Line Chart</option>
@@ -384,7 +384,7 @@
 
     <script>
         document.addEventListener("DOMContentLoaded", function () {
-            // Chart type selection functionality
+            // Chart type selector logic
             const chartTypeSelectors = document.querySelectorAll('.chart-type-selector');
             chartTypeSelectors.forEach(selector => {
                 selector.addEventListener('change', function () {
@@ -392,9 +392,39 @@
                     const chartType = this.value;
                     const chartDiv = document.getElementById(chartId).querySelector('.plotly-graph-div');
 
-                    Plotly.restyle(chartDiv, {
-                        type: chartType
-                    });
+                    // Get the current data and layout of the chart
+                    const chartData = chartDiv.data;
+                    const chartLayout = chartDiv.layout;
+
+                    if (chartType === 'pie') {
+                        // Convert bar/line chart data to pie chart format
+                        const pieData = chartData.map(trace => {
+                            return {
+                                type: 'pie',
+                                labels: trace.x,  // Use x values as labels
+                                values: trace.y,  // Use y values as values
+                                textinfo: 'label+percent',  // Show labels and percentages
+                                textposition: 'inside',  // Position labels inside the pie slices
+                                textfont: { size: 12, family: 'Arial', color: 'black', weight: 'bold' }
+                            };
+                        });
+
+                        // Update the chart with the new pie chart data
+                        Plotly.react(chartDiv, pieData, chartLayout);
+                    } else {
+                        // For bar/line charts, revert to the original data structure
+                        const barLineData = chartData.map(trace => {
+                            return {
+                                type: chartType,
+                                x: trace.labels || trace.x,  // Use labels or x values
+                                y: trace.values || trace.y,  // Use values or y values
+                                textfont: { size: 12, family: 'Arial', color: 'black', weight: 'bold' }
+                            };
+                        });
+
+                        // Update the chart with the new bar/line chart data
+                        Plotly.react(chartDiv, barLineData, chartLayout);
+                    }
                 });
             });
 
@@ -411,6 +441,7 @@
 
                     const point = eventData.points[0];
                     const traceIndex = point.curveNumber;
+                    const pointIndex = point.pointNumber;
 
                     // Only apply if this is a different trace than currently highlighted
                     if (highlightedTrace !== traceIndex) {
@@ -432,9 +463,40 @@
                         // Update the highlighted trace
                         highlightedTrace = traceIndex;
                     }
+
+                    // Animate the hovered part (bar, pie slice, or point)
+                    const hoveredElement = chartDiv.querySelector(
+                        `.trace.bars path.point-${pointIndex}, .slice-${pointIndex}, .points path.point-${pointIndex}`
+                    );
+
+                    if (hoveredElement) {
+                        // Add a popout effect (scale or translate)
+                        hoveredElement.style.transition = 'transform 0.3s ease';
+                        hoveredElement.style.transform = 'scale(1.2)'; // Scale up by 20%
+                        hoveredElement.style.zIndex = '10'; // Bring to the front
+                    }
                 });
 
-                // When clicking, create detailed information
+                // Add a custom unhover event to reset when not hovering any trace
+                chartDiv.on('plotly_unhover', function () {
+                    // Reset all traces to full opacity
+                    Plotly.restyle(chartDiv, {
+                        opacity: 1.0
+                    });
+
+                    // Reset highlighted trace
+                    highlightedTrace = null;
+
+                    // Reset any hovered element's transform
+                    const hoveredElements = chartDiv.querySelectorAll('.trace.bars path, .slice, .points path');
+                    hoveredElements.forEach(element => {
+                        element.style.transition = 'transform 0.3s ease';
+                        element.style.transform = 'scale(1)'; // Reset scale
+                        element.style.zIndex = '0'; // Reset z-index
+                    });
+                });
+
+                // Add a click event for detailed information
                 chartDiv.on('plotly_click', function (eventData) {
                     if (!eventData || !eventData.points || eventData.points.length === 0) return;
 
@@ -515,19 +577,9 @@
                         }
                     });
                 });
-
-                // Add a custom unhover event to reset when not hovering any trace
-                chartDiv.on('plotly_unhover', function () {
-                    // Reset all traces to full opacity
-                    Plotly.restyle(chartDiv, {
-                        opacity: 1.0
-                    });
-
-                    // Reset highlighted trace
-                    highlightedTrace = null;
-                });
             });
         });
+
     </script>
 
 </body>
